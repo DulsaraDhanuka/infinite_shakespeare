@@ -21,9 +21,9 @@ parser.add_argument('--num_heads', help='Number of heads in the multi-head atten
 parser.add_argument('--num_blocks', help='Number of transformer blocks', type=int, required=True)
 parser.add_argument('--eval_iters', help='Evaluation iterations', type=int, required=True)
 parser.add_argument('--eval_interval', help='Evaluation interval', type=int, required=True)
-parser.add_argument('--learning_rate', help='Learning rate', type=int, required=True)
+parser.add_argument('--learning_rate', help='Learning rate', type=float, required=True)
 parser.add_argument('--max_iters', help='Max Iterations', type=int, required=True)
-parser.add_argument('--dropout', help='Dropout rate', type=int, required=True)
+parser.add_argument('--dropout', help='Dropout rate', type=float, required=True)
 args = parser.parse_args()
 
 enc = tiktoken.get_encoding("p50k_base")
@@ -32,7 +32,7 @@ with open(args.input, 'r') as f:
 tokens = enc.encode(text)
 n_vocab = enc.n_vocab
 
-block_size = args.block_size #64
+block_size = args.block_size
 batch_size = args.batch_size
 n_embd = args.embedding_size
 n_heads = args.num_heads
