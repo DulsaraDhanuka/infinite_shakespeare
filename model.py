@@ -87,8 +87,9 @@ class Transformer(nn.Module):
         self.ln = nn.LayerNorm(self.n_embd)
         self.lm_head = nn.Linear(self.n_embd, self.n_vocab)
     def forward(self, idx, targets=None):
+        _, T = idx.shape
         tok_embd = self.embedding(idx)
-        pos_embd = self.positional_embedding(torch.arange(0, self.block_size, device=self.device))
+        pos_embd = self.positional_embedding(torch.arange(0, T, device=self.device))
         x = tok_embd + pos_embd
         x = self.blocks(x)
         x = self.ln(x)
@@ -102,3 +103,13 @@ class Transformer(nn.Module):
         targets = targets.view(B*T)
         loss = F.cross_entropy(logits, targets)
         return logits, loss
+
+    def generate(self, idx, max_new_tokens):
+        for _ in range(max_new_tokens):
+            idx_cond = idx[:, -self.block_size:]
+            logits, _ = self(idx_cond)
+            logits = logits[:, -1, :]
+            probs = F.softmax(logits, dim=1)
+            idx_next = torch.multinomial(probs, num_samples=1)
+            idx = torch.cat((idx, idx_next), dim=1)
+        return idx

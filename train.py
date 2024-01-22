@@ -1,26 +1,47 @@
+import os
+import time
 import torch
 import tiktoken
+import argparse
 import torch.nn as nn
 from model import Transformer
 from torch.nn import functional as F
 from matplotlib import pyplot as plt
 
-enc = tiktoken.get_encoding("cl100k_base")
-with open('data/input.txt', 'r') as f:
+parser = argparse.ArgumentParser(
+                    prog='Infinite Shakespeare Trainer',
+                    description='Train the transformer on a dataset')
+
+parser.add_argument('-i', '--input', help='Input file', default='data/tiny-shakespeare.txt')
+parser.add_argument('-o', '--output', help='Output directory', default='.')
+parser.add_argument('--block_size', help='Block (context) size', type=int, required=True)
+parser.add_argument('--batch_size', help='Batch size', type=int, required=True)
+parser.add_argument('--embedding_size', help='Embedding dimensions', type=int, required=True)
+parser.add_argument('--num_heads', help='Number of heads in the multi-head attention layer', type=int, required=True)
+parser.add_argument('--num_blocks', help='Number of transformer blocks', type=int, required=True)
+parser.add_argument('--eval_iters', help='Evaluation iterations', type=int, required=True)
+parser.add_argument('--eval_interval', help='Evaluation interval', type=int, required=True)
+parser.add_argument('--learning_rate', help='Learning rate', type=int, required=True)
+parser.add_argument('--max_iters', help='Max Iterations', type=int, required=True)
+parser.add_argument('--dropout', help='Dropout rate', type=int, required=True)
+args = parser.parse_args()
+
+enc = tiktoken.get_encoding("p50k_base")
+with open(args.input, 'r') as f:
     text = f.read()
 tokens = enc.encode(text)
 n_vocab = enc.n_vocab
 
-block_size = 256
-batch_size = 64
-n_embd = 384
-n_heads = 6
-n_blocks = 6
-eval_iters = 200
-learning_rate = 3e-4
-max_iters = 5000
-eval_interval = 200
-dropout = 0.2
+block_size = args.block_size #64
+batch_size = args.batch_size
+n_embd = args.embedding_size
+n_heads = args.num_heads
+n_blocks = args.num_blocks
+eval_iters = args.eval_iters
+learning_rate = args.learning_rate
+max_iters = args.max_iters
+eval_interval = args.eval_interval
+dropout = args.dropout
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 data = torch.tensor(tokens, dtype=torch.long)
@@ -50,22 +71,30 @@ def estimate_loss():
     model.train()
     return out
 
-model = Transformer(block_size, n_vocab, n_embd, n_heads, dropout, device)
+model = Transformer(block_size, n_vocab, n_embd, n_heads, n_blocks, dropout, device)
 model.to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
 training_epoch_loss = []
 validation_epoch_loss = []
+model_id = time.time()
 for step in range(max_iters):
     if step % eval_interval == 0:
         losses = estimate_loss()
         training_epoch_loss.append(losses['train'])
         validation_epoch_loss.append(losses['val'])
+        torch.save(model.state_dict(), os.path.join(args.output, f"model-{model_id}-{step}.pth"))
         print(f"step: {step}, training loss: {losses['train']}, validation loss: {losses['val']}")
     logits, loss = model(*get_batch("train"))
     optimizer.zero_grad(set_to_none=True)
     loss.backward()
     optimizer.step()
+
+losses = estimate_loss()
+training_epoch_loss.append(losses['train'])
+validation_epoch_loss.append(losses['val'])
+torch.save(model.state_dict(), os.path.join(args.output, f"model-{model_id}-{step}.pth"))
+print(f"step: {step}, training loss: {losses['train']}, validation loss: {losses['val']}")
 
 plt.plot(training_epoch_loss, label='train_loss')
 plt.plot(validation_epoch_loss,label='val_loss')
