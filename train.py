@@ -3,6 +3,7 @@ import tiktoken
 import torch.nn as nn
 from model import Transformer
 from torch.nn import functional as F
+from matplotlib import pyplot as plt
 
 enc = tiktoken.get_encoding("cl100k_base")
 with open('data/input.txt', 'r') as f:
@@ -18,7 +19,7 @@ n_blocks = 6
 eval_iters = 200
 learning_rate = 3e-4
 max_iters = 5000
-eval_interval = 500
+eval_interval = 200
 dropout = 0.2
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -53,11 +54,20 @@ model = Transformer(block_size, n_vocab, n_embd, n_heads, dropout, device)
 model.to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
+training_epoch_loss = []
+validation_epoch_loss = []
 for step in range(max_iters):
     if step % eval_interval == 0:
         losses = estimate_loss()
+        training_epoch_loss.append(losses['train'])
+        validation_epoch_loss.append(losses['val'])
         print(f"step: {step}, training loss: {losses['train']}, validation loss: {losses['val']}")
     logits, loss = model(*get_batch("train"))
     optimizer.zero_grad(set_to_none=True)
     loss.backward()
     optimizer.step()
+
+plt.plot(training_epoch_loss, label='train_loss')
+plt.plot(validation_epoch_loss,label='val_loss')
+plt.legend()
+plt.show()
