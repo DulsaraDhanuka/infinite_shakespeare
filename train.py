@@ -1,3 +1,4 @@
+import json
 import os
 import time
 import torch
@@ -79,22 +80,28 @@ training_epoch_loss = []
 validation_epoch_loss = []
 model_id = time.time()
 for step in range(max_iters):
-    if step % eval_interval == 0:
-        losses = estimate_loss()
-        training_epoch_loss.append(losses['train'])
-        validation_epoch_loss.append(losses['val'])
-        torch.save(model.state_dict(), os.path.join(args.output, f"model-{model_id}-{step}.pth"))
-        print(f"step: {step}, training loss: {losses['train']}, validation loss: {losses['val']}")
-    logits, loss = model(*get_batch("train"))
-    optimizer.zero_grad(set_to_none=True)
-    loss.backward()
-    optimizer.step()
+    try:
+        if step % eval_interval == 0:
+            losses = estimate_loss()
+            training_epoch_loss.append(losses['train'])
+            validation_epoch_loss.append(losses['val'])
+            torch.save(model.state_dict(), os.path.join(args.output, f"model-{model_id}-{step}.pth"))
+            print(f"step: {step}, training loss: {losses['train']}, validation loss: {losses['val']}")
+        logits, loss = model(*get_batch("train"))
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+    except KeyboardInterrupt as e:
+        break
 
 losses = estimate_loss()
 training_epoch_loss.append(losses['train'])
 validation_epoch_loss.append(losses['val'])
 torch.save(model.state_dict(), os.path.join(args.output, f"model-{model_id}-{step}.pth"))
 print(f"step: {step}, training loss: {losses['train']}, validation loss: {losses['val']}")
+
+with open(os.path.join(args.output, f"model-{model_id}.config"), 'w') as f:
+    f.write(json.dumps(args))
 
 plt.plot(training_epoch_loss, label='train_loss')
 plt.plot(validation_epoch_loss,label='val_loss')
