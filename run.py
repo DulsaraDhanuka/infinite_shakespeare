@@ -16,7 +16,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 model = Transformer(block_size, n_vocab, n_embd, n_heads, dropout, device)
 model.to(device)
-model.load_state_dict(torch.load("model-main.ckpt", map_location=torch.device('cpu')))
+model.load_state_dict(torch.load("models/main.ckpt", map_location=torch.device('cpu')))
 model.eval()
 
 while True:

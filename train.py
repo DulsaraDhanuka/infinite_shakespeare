@@ -5,7 +5,7 @@ from model import Transformer
 from torch.nn import functional as F
 
 enc = tiktoken.get_encoding("cl100k_base")
-with open('input.txt', 'r') as f:
+with open('data/input.txt', 'r') as f:
     text = f.read()
 tokens = enc.encode(text)
 n_vocab = enc.n_vocab
